@@ -2,17 +2,13 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const { GoogleAuth } = require('google-auth-library');
 const { google } = require('googleapis');
 
-// Environment variables from Railway
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const SHEET_ID = process.env.SHEET_ID;
 const GOOGLE_CREDENTIALS = JSON.parse(process.env.GOOGLE_CREDENTIALS);
 
-// Event-logs channel ID
 const EVENT_LOG_CHANNEL_ID = "1348377028654796914";
-
 let loggingEnabled = false;
 
-// Google Sheets setup
 const auth = new GoogleAuth({
   credentials: GOOGLE_CREDENTIALS,
   scopes: ["https://www.googleapis.com/auth/spreadsheets"]
@@ -23,7 +19,6 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
-// Discord.js v15+ uses clientReady
 client.once('clientReady', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
@@ -31,7 +26,6 @@ client.once('clientReady', () => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  // Enable/disable commands
   if (message.content === "!enable-logs") {
     loggingEnabled = true;
     await message.reply("Event logging enabled ✅");
@@ -43,29 +37,22 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // Only allow in event-logs channel
   if (message.channel.id !== EVENT_LOG_CHANNEL_ID) return;
-
-  // Only run if logging is enabled
   if (!loggingEnabled) return;
 
-  // Split into lines and detect Name + Quota (case-insensitive)
   const lines = message.content.split("\n");
   const nameLine = lines.find(l => l.toLowerCase().startsWith("name:"));
   const quotaLine = lines.find(l => l.toLowerCase().startsWith("quota:"));
-
-  if (!nameLine || !quotaLine) {
-    return; // gracefully ignore if format doesn't match
-  }
+  if (!nameLine || !quotaLine) return;
 
   try {
     const name = nameLine.split(":")[1].trim();
     const quota = quotaLine.split(":")[1].trim();
 
-    // Get usernames from column C (bounded range)
+    // ✅ Correct tab name and bounded range
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "'8th Fighter Wing Fighter Pilots'!C1:C100"
+      range: "'8th Fighter Wing Fighter Pilots'!C1:C500"
     });
 
     const rows = res.data.values || [];
@@ -78,16 +65,12 @@ client.on('messageCreate', async (message) => {
     });
 
     if (targetRow) {
-      // Write quota into column J of same row
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
         range: `'8th Fighter Wing Fighter Pilots'!J${targetRow}`,
         valueInputOption: "USER_ENTERED",
-        requestBody: {
-          values: [[quota]]
-        }
+        requestBody: { values: [[quota]] }
       });
-
       await message.react("✅");
     } else {
       await message.reply(`⚠️ Username "${name}" not found in column C.`);
