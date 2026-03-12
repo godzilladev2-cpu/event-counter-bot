@@ -62,17 +62,17 @@ client.on('messageCreate', async (message) => {
     const name = nameLine.split(":")[1].trim();
     const quota = quotaLine.split(":")[1].trim();
 
-    // Get all values in column B (usernames)
+    // Get all values in column C (usernames)
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "'8th Fighter Wing Fighter Pilots'!B:B"   // <-- tab name must match exactly
+      range: "'8th Fighter Wing Fighter Pilots'!C:C"   // usernames are in column C
     });
 
     const rows = res.data.values || [];
     let targetRow = null;
 
     rows.forEach((row, idx) => {
-      if (row[0] && row[0].trim() === name) {
+      if (row[0] && row[0].trim().toLowerCase() === name.toLowerCase()) {
         targetRow = idx + 1; // Sheets rows are 1-indexed
       }
     });
@@ -90,7 +90,7 @@ client.on('messageCreate', async (message) => {
 
       await message.react("✅");
     } else {
-      await message.reply(`⚠️ Username "${name}" not found in column B.`);
+      await message.reply(`⚠️ Username "${name}" not found in column C.`);
     }
   } catch (err) {
     console.error("Error logging to sheet:", err);
