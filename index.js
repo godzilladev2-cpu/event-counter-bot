@@ -23,7 +23,7 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
-// Use clientReady instead of ready (Discord.js v15+)
+// Discord.js v15+ uses clientReady
 client.once('clientReady', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
@@ -49,50 +49,52 @@ client.on('messageCreate', async (message) => {
   // Only run if logging is enabled
   if (!loggingEnabled) return;
 
-  // Split into lines and detect Name + Quota
+  // Split into lines and detect Name + Quota (case-insensitive)
   const lines = message.content.split("\n");
-  const nameLine = lines.find(l => l.startsWith("Name:"));
-  const quotaLine = lines.find(l => l.startsWith("Quota:"));
+  const nameLine = lines.find(l => l.toLowerCase().startsWith("name:"));
+  const quotaLine = lines.find(l => l.toLowerCase().startsWith("quota:"));
 
-  if (nameLine && quotaLine) {
-    try {
-      const name = nameLine.replace("Name:", "").trim();
-      const quota = quotaLine.replace("Quota:", "").trim();
+  if (!nameLine || !quotaLine) {
+    return; // gracefully ignore if format doesn't match
+  }
 
-      // Get all values in column C (usernames)
-      const res = await sheets.spreadsheets.values.get({
+  try {
+    const name = nameLine.split(":")[1].trim();
+    const quota = quotaLine.split(":")[1].trim();
+
+    // Get all values in column C (usernames)
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: "Database!C:C"   // adjust tab name if not "Database"
+    });
+
+    const rows = res.data.values || [];
+    let targetRow = null;
+
+    rows.forEach((row, idx) => {
+      if (row[0] && row[0].trim() === name) {
+        targetRow = idx + 1; // Sheets rows are 1-indexed
+      }
+    });
+
+    if (targetRow) {
+      // Update column J in the same row
+      await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
-        range: "Database!C:C"   // adjust tab name if not "Database"
-      });
-
-      const rows = res.data.values || [];
-      let targetRow = null;
-
-      rows.forEach((row, idx) => {
-        if (row[0] && row[0].trim() === name) {
-          targetRow = idx + 1; // +1 because rows are 1-indexed in Sheets
+        range: `Database!J${targetRow}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[quota]]
         }
       });
 
-      if (targetRow) {
-        // Update column J in the same row
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: SHEET_ID,
-          range: `Database!J${targetRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: {
-            values: [[quota]]
-          }
-        });
-
-        await message.react("✅");
-      } else {
-        await message.reply(`⚠️ Username "${name}" not found in column C.`);
-      }
-    } catch (err) {
-      console.error("Error logging to sheet:", err);
-      await message.reply("⚠️ Failed to log entry.");
+      await message.react("✅");
+    } else {
+      await message.reply(`⚠️ Username "${name}" not found in column C.`);
     }
+  } catch (err) {
+    console.error("Error logging to sheet:", err);
+    await message.reply("⚠️ Failed to log entry.");
   }
 });
 
