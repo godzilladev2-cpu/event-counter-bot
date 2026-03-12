@@ -5,7 +5,6 @@ const { google } = require('googleapis');
 // Environment variables from Railway
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const SHEET_ID = process.env.SHEET_ID;
-const GUILD_ID = process.env.GUILD_ID;
 const GOOGLE_CREDENTIALS = JSON.parse(process.env.GOOGLE_CREDENTIALS);
 
 // Event-logs channel ID
@@ -24,7 +23,8 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
-client.once('ready', () => {
+// Use clientReady instead of ready (Discord.js v15+)
+client.once('clientReady', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
@@ -49,26 +49,46 @@ client.on('messageCreate', async (message) => {
   // Only run if logging is enabled
   if (!loggingEnabled) return;
 
-  // Detect quota messages
-  if (message.content.includes("Name:") && message.content.includes("Quota:")) {
-    try {
-      // Example: "Name: Dev, Quota: 5"
-      const parts = message.content.split(",");
-      const name = parts[0].split("Name:")[1].trim();
-      const quota = parts[1].split("Quota:")[1].trim();
+  // Split into lines and detect Name + Quota
+  const lines = message.content.split("\n");
+  const nameLine = lines.find(l => l.startsWith("Name:"));
+  const quotaLine = lines.find(l => l.startsWith("Quota:"));
 
-      // Append to Google Sheet
-      await sheets.spreadsheets.values.append({
+  if (nameLine && quotaLine) {
+    try {
+      const name = nameLine.replace("Name:", "").trim();
+      const quota = quotaLine.replace("Quota:", "").trim();
+
+      // Get all values in column C (usernames)
+      const res = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
-        range: "Sheet1!A:B",
-        valueInputOption: "USER_ENTERED",
-        requestBody: {
-          values: [[name, quota]]
+        range: "Database!C:C"   // adjust tab name if not "Database"
+      });
+
+      const rows = res.data.values || [];
+      let targetRow = null;
+
+      rows.forEach((row, idx) => {
+        if (row[0] && row[0].trim() === name) {
+          targetRow = idx + 1; // +1 because rows are 1-indexed in Sheets
         }
       });
 
-      // React with tick
-      await message.react("✅");
+      if (targetRow) {
+        // Update column J in the same row
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: `Database!J${targetRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: {
+            values: [[quota]]
+          }
+        });
+
+        await message.react("✅");
+      } else {
+        await message.reply(`⚠️ Username "${name}" not found in column C.`);
+      }
     } catch (err) {
       console.error("Error logging to sheet:", err);
       await message.reply("⚠️ Failed to log entry.");
