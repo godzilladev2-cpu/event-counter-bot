@@ -62,10 +62,10 @@ client.on('messageCreate', async (message) => {
     const name = nameLine.split(":")[1].trim();
     const quota = quotaLine.split(":")[1].trim();
 
-    // Get all values in column C (usernames)
+    // Get usernames from column C (bounded range)
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "'8th Fighter Wing Fighter Pilots'!C:C"   // usernames are in column C
+      range: "'8th Fighter Wing Fighter Pilots'!C1:C100"
     });
 
     const rows = res.data.values || [];
@@ -78,7 +78,7 @@ client.on('messageCreate', async (message) => {
     });
 
     if (targetRow) {
-      // Update column J in the same row
+      // Write quota into column J of same row
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
         range: `'8th Fighter Wing Fighter Pilots'!J${targetRow}`,
