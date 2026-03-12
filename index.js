@@ -9,6 +9,7 @@ const GOOGLE_CREDENTIALS = JSON.parse(process.env.GOOGLE_CREDENTIALS);
 const EVENT_LOG_CHANNEL_ID = "1348377028654796914";
 let loggingEnabled = false;
 
+// Google Sheets setup
 const auth = new GoogleAuth({
   credentials: GOOGLE_CREDENTIALS,
   scopes: ["https://www.googleapis.com/auth/spreadsheets"]
@@ -26,6 +27,7 @@ client.once('clientReady', () => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
+  // Enable/disable commands
   if (message.content === "!enable-logs") {
     loggingEnabled = true;
     await message.reply("Event logging enabled ✅");
@@ -37,9 +39,11 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
+  // Only allow in event-logs channel
   if (message.channel.id !== EVENT_LOG_CHANNEL_ID) return;
   if (!loggingEnabled) return;
 
+  // Split into lines and detect Name + Quota (case-insensitive)
   const lines = message.content.split("\n");
   const nameLine = lines.find(l => l.toLowerCase().startsWith("name:"));
   const quotaLine = lines.find(l => l.toLowerCase().startsWith("quota:"));
@@ -49,10 +53,10 @@ client.on('messageCreate', async (message) => {
     const name = nameLine.split(":")[1].trim();
     const quota = quotaLine.split(":")[1].trim();
 
-    // ✅ Correct tab name and bounded range
+    // ✅ Correct tab name: 8th Wing Personnel
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "'8th Fighter Wing Fighter Pilots'!C1:C500"
+      range: "'8th Wing Personnel'!C1:C500"  // usernames are in column C
     });
 
     const rows = res.data.values || [];
@@ -67,7 +71,7 @@ client.on('messageCreate', async (message) => {
     if (targetRow) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
-        range: `'8th Fighter Wing Fighter Pilots'!J${targetRow}`,
+        range: `'8th Wing Personnel'!J${targetRow}`, // quotas go in column J
         valueInputOption: "USER_ENTERED",
         requestBody: { values: [[quota]] }
       });
