@@ -62,10 +62,10 @@ client.on('messageCreate', async (message) => {
     const name = nameLine.split(":")[1].trim();
     const quota = quotaLine.split(":")[1].trim();
 
-    // Get all values in column C (usernames)
+    // Get all values in column B (usernames)
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "Database!C:C"   // adjust tab name if not "Database"
+      range: "'8th Fighter Wing Fighter Pilots'!B:B"   // <-- tab name must match exactly
     });
 
     const rows = res.data.values || [];
@@ -81,7 +81,7 @@ client.on('messageCreate', async (message) => {
       // Update column J in the same row
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
-        range: `Database!J${targetRow}`,
+        range: `'8th Fighter Wing Fighter Pilots'!J${targetRow}`,
         valueInputOption: "USER_ENTERED",
         requestBody: {
           values: [[quota]]
@@ -90,7 +90,7 @@ client.on('messageCreate', async (message) => {
 
       await message.react("✅");
     } else {
-      await message.reply(`⚠️ Username "${name}" not found in column C.`);
+      await message.reply(`⚠️ Username "${name}" not found in column B.`);
     }
   } catch (err) {
     console.error("Error logging to sheet:", err);
