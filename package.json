@@ -1,0 +1,14 @@
+{
+  "name": "event-counter-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for event quota tracking with Google Sheets",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.25.1",
+    "googleapis": "^171.4.0"
+  }
+}
+
