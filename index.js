@@ -26,6 +26,7 @@ async function logToSheet(data) {
     });
 
     const sheets = google.sheets({ version: "v4", auth });
+    console.log("Attempting to log to Sheets with data:", data);
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.SHEET_ID,
       range: "Logs!A1",
