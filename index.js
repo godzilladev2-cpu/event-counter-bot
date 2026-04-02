@@ -37,7 +37,7 @@ async function logToSheet(data) {
 
     console.log("✅ Logged data to Google Sheets");
   } catch (err) {
-    console.error("❌ Failed to log to Sheets:", err.message);
+    console.error("❌ Sheets logging error:", err);
   }
 }
 
